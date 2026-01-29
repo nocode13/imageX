@@ -10,11 +10,13 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "dedoc/scramble": "^0.13.11",
         "laravel/framework": "^12.0",
         "laravel/octane": "^2.13",
         "laravel/tinker": "^2.10.1",
         "spiral/roadrunner-cli": "^2.7",
-        "spiral/roadrunner-http": "^3.6"
+        "spiral/roadrunner-http": "^3.6",
+        "tymon/jwt-auth": "^2.2"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

@@ -52,6 +52,10 @@ cp .env.example .env
 
 Приложение доступно по адресу: http://localhost:8000
 
+## API Документация
+
+Swagger/OpenAPI документация (Scramble): http://localhost:8000/docs/api
+
 ## RoadRunner (Octane)
 
 Приложение обслуживается через **Laravel Octane** с сервером **RoadRunner**.
