@@ -1,0 +1,58 @@
+includes:
+  - phpstan-baseline.neon
+  - vendor/larastan/larastan/extension.neon
+  - vendor/nesbot/carbon/extension.neon
+  - vendor/tpetry/laravel-postgresql-enhanced/phpstan-extension.neon
+
+parameters:
+  level: 10
+  paths:
+      - app
+      - config
+      - database
+      - routes
+
+  # Указываем папку для кэша, чтобы кэшировать её в CI
+  # и не терять кэш при перезапуске докер контейнера.
+  tmpDir: %currentWorkingDirectory%/.phpstan-cache
+
+  # Правила Larastan.
+  checkModelProperties: true
+  checkOctaneCompatibility: true
+  checkAuthCallsWhenInRequestScope: true
+  checkConfigTypes: true
+  generalizeEnvReturnType: true
+
+  # Правила PHPStan.
+  polluteScopeWithLoopInitialAssignments: false
+  polluteScopeWithAlwaysIterableForeach: false
+  polluteScopeWithBlock: false
+  checkExplicitMixedMissingReturn: true
+  checkFunctionNameCase: true
+  checkInternalClassCaseSensitivity: true
+  reportMaybesInMethodSignatures: true
+  reportMaybesInPropertyPhpDocTypes: true
+  reportStaticMethodSignatures: true
+  checkUninitializedProperties: true
+  checkDynamicProperties: true
+  rememberPossiblyImpureFunctionValues: false
+  reportWrongPhpDocTypeInVarTag: true
+  checkMissingCallableSignature: true
+  reportUnmatchedIgnoredErrors: true
+
+
+  # Эксперементальные правила. Эти правила не использовались раньше, поэтому
+  # пока не понятно, насколько сильно они повлияют на процесс разработки.
+  # Если от них будет польза, их нужно будет перенести к другим правилам PHPStan
+  # и включать во всех будущих проектах.
+  checkBenevolentUnionTypes: true
+  reportPossiblyNonexistentGeneralArrayOffset: true
+  reportPossiblyNonexistentConstantArrayOffset: true
+  # Вызывает ложно положительное срабатывание в match по enum без default.
+  # Надо закинуть issue.
+  # reportAlwaysTrueInLastCondition: true
+  reportAnyTypeWideningInVarTag: true
+
+  ignoreErrors:
+    # - message: '#^Method Illuminate\\Database\\Migrations\\Migration@anonymous/database/migrations/(.+?).php:(\d+?)::(up|down)\(\) throws checked exception RuntimeException but it''s missing from the PHPDoc @throws tag\.$#'
+    #   path: database/migration*
