@@ -1,6 +1,22 @@
 # ImageX
 
-Laravel 12 приложение на RoadRunner (Octane) с PostgreSQL и MinIO, развёрнутое через Laravel Sail.
+Сервис для загрузки и хранения изображений с дедупликацией.
+
+## Стек
+
+- **Laravel 12** + Octane (RoadRunner)
+- **PostgreSQL 18**
+- **Redis 7** — очереди, кэш
+- **MinIO** — S3-совместимое хранилище
+- **JWT** — аутентификация
+
+## Возможности
+
+- Загрузка PNG/JPEG (до 5MB)
+- Автоматическое сжатие в WebP
+- Генерация thumbnails (200x200)
+- Дедупликация по SHA256
+- Асинхронная обработка через очереди
 
 ## Требования
 
@@ -8,89 +24,120 @@ Laravel 12 приложение на RoadRunner (Octane) с PostgreSQL и MinIO,
 
 ## Установка
 
-1. Клонировать репозиторий:
-
 ```bash
+# 1. Клонировать репозиторий
 git clone <repo-url> imageX
 cd imageX
-```
 
-2. Установить PHP-зависимости (без локального PHP — через Docker):
-
-```bash
+# 2. Установить зависимости (без локального PHP)
 docker run --rm \
     -u "$(id -u):$(id -g)" \
     -v "$(pwd):/var/www/html" \
     -w /var/www/html \
     laravelsail/php85-composer:latest \
     composer install --ignore-platform-reqs
-```
 
-3. Настроить окружение:
-
-```bash
+# 3. Настроить окружение
 cp .env.example .env
 ./vendor/bin/sail artisan key:generate
-```
+./vendor/bin/sail artisan jwt:secret
 
-4. Поднять контейнеры:
-
-```bash
+# 4. Запустить контейнеры
 ./vendor/bin/sail up -d
-```
 
-Будут запущены:
-- **laravel.test** — PHP 8.5 + Laravel Octane (RoadRunner) на порту `8000`
-- **pgsql** — PostgreSQL 18 на порту `5432`
-- **minio** — S3-совместимое хранилище, API на порту `9000`, консоль на `8900`
+# 5. Создать bucket в MinIO
+# Открыть http://localhost:8900
+# Логин: sail / Пароль: password
+# Создать bucket: images
 
-5. Выполнить миграции:
-
-```bash
+# 6. Выполнить миграции
 ./vendor/bin/sail artisan migrate
+
+# 7. Запустить воркер очередей
+./vendor/bin/sail artisan queue:work
 ```
 
-Приложение доступно по адресу: http://localhost:8000
+## Сервисы
 
-## API Документация
+| Сервис | URL | Описание |
+|--------|-----|----------|
+| API | http://localhost:8000 | Основное приложение |
+| Документация | http://localhost:8000/docs/api | Swagger UI (Scramble) |
+| MinIO Console | http://localhost:8900 | Управление хранилищем |
+| PostgreSQL | localhost:5432 | База данных |
+| Redis | localhost:6379 | Очереди и кэш |
 
-Swagger/OpenAPI документация (Scramble): http://localhost:8000/docs/api
+## API
 
-## RoadRunner (Octane)
+### Аутентификация
 
-Приложение обслуживается через **Laravel Octane** с сервером **RoadRunner**.
+```
+POST /api/auth/register   — Регистрация
+POST /api/auth/login      — Вход (получение JWT токена)
+GET  /api/auth/me         — Текущий пользователь
+```
 
-RoadRunner держит приложение в памяти между запросами, что значительно ускоряет обработку. Учитывайте это при разработке: избегайте хранения состояния в статических свойствах и синглтонах.
+### Изображения
 
-### Запуск с watch режимом (для разработки)
+```
+POST   /api/images              — Загрузить изображение
+GET    /api/images              — Список своих изображений
+GET    /api/images/{id}         — Скачать изображение
+GET    /api/images/{id}/thumbnail — Скачать thumbnail
+DELETE /api/images/{id}         — Удалить изображение
+```
+
+Все эндпоинты изображений требуют JWT токен в заголовке:
+```
+Authorization: Bearer <token>
+```
+
+## Разработка
 
 ```bash
+# Запуск с watch режимом (автоперезагрузка)
 ./vendor/bin/sail up -d && ./vendor/bin/sail artisan octane:start --watch --host=0.0.0.0
-```
 
-Сервер будет автоматически перезагружаться при изменении файлов.
+# Воркер очередей (в отдельном терминале)
+./vendor/bin/sail artisan queue:work
 
-## Полезные команды
-
-```bash
-# Остановить контейнеры
-./vendor/bin/sail down
-
-# Логи
-./vendor/bin/sail logs -f
-
-# Artisan
-./vendor/bin/sail artisan <command>
-
-# Composer
-./vendor/bin/sail composer <command>
+# PHPStan
+./vendor/bin/sail composer phpstan
 
 # Тесты
 ./vendor/bin/sail test
+
+# Логи
+./vendor/bin/sail logs -f
 ```
 
-## MinIO (S3)
+## Архитектура
 
-- API: http://localhost:9000
-- Консоль: http://localhost:8900
-- Логин: `sail` / Пароль: `password`
+### Обработка изображений
+
+1. Пользователь загружает PNG/JPEG
+2. Файл сохраняется во временное хранилище (MinIO `temp/`)
+3. Job в очереди обрабатывает файл:
+   - Вычисляет SHA256 хэш
+   - Проверяет дедупликацию
+   - Сжимает в WebP (85% качества)
+   - Создаёт thumbnail 200x200
+   - Сохраняет в MinIO
+4. Статус меняется `pending` → `ready`
+
+### Дедупликация
+
+Если файл с таким же содержимым уже загружен — создаётся только ссылка, физический файл не дублируется.
+
+### Структура хранилища (MinIO)
+
+```
+images/
+├── temp/           — временные файлы
+├── images/         — сжатые изображения
+│   └── ab/         — подпапки по первым символам хэша
+│       └── abc123...webp
+└── thumbnails/     — превью
+    └── ab/
+        └── abc123...webp
+```
