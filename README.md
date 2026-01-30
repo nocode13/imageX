@@ -5,6 +5,7 @@
 ## Стек
 
 - **Laravel 12** + Octane (RoadRunner)
+- **Laravel Horizon** — управление очередями
 - **PostgreSQL 18**
 - **Redis 7** — очереди, кэш
 - **MinIO** — S3-совместимое хранилище
@@ -53,8 +54,8 @@ cp .env.example .env
 # 6. Выполнить миграции
 ./vendor/bin/sail artisan migrate
 
-# 7. Запустить воркер очередей
-./vendor/bin/sail artisan queue:work
+# 7. Запустить Horizon (воркеры очередей)
+./vendor/bin/sail artisan horizon
 ```
 
 ## Сервисы
@@ -62,6 +63,7 @@ cp .env.example .env
 | Сервис | URL | Описание |
 |--------|-----|----------|
 | API | http://localhost:8000 | Основное приложение |
+| Horizon | http://localhost:8000/horizon | Мониторинг очередей |
 | Документация | http://localhost:8000/docs/api | Swagger UI (Scramble) |
 | MinIO Console | http://localhost:8900 | Управление хранилищем |
 | PostgreSQL | localhost:5432 | База данных |
@@ -98,8 +100,8 @@ Authorization: Bearer <token>
 # Запуск с watch режимом (автоперезагрузка)
 ./vendor/bin/sail up -d && ./vendor/bin/sail artisan octane:start --watch --host=0.0.0.0
 
-# Воркер очередей (в отдельном терминале)
-./vendor/bin/sail artisan queue:work
+# Horizon (в отдельном терминале)
+./vendor/bin/sail artisan horizon
 
 # PHPStan
 ./vendor/bin/sail composer phpstan
