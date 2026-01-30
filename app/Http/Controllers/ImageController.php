@@ -116,7 +116,7 @@ class ImageController extends Controller
         /** @var \App\Models\User $user */
         $user = JWTAuth::user();
 
-        $userImage = UserImage::where('id', $id)
+        $userImage = UserImage::with('imageFile')->where('id', $id)
             ->where('user_id', $user->id)
             ->first();
 
@@ -128,7 +128,23 @@ class ImageController extends Controller
             Storage::disk('s3')->delete($userImage->temp_path);
         }
 
+        $imageFile = $userImage->imageFile;
+
         $userImage->delete();
+
+        if ($imageFile) {
+            $otherReferences = UserImage::where('image_file_id', $imageFile->id)->exists();
+
+            if (! $otherReferences) {
+                Storage::disk('s3')->delete($imageFile->storage_path);
+
+                if ($imageFile->thumbnail_path) {
+                    Storage::disk('s3')->delete($imageFile->thumbnail_path);
+                }
+
+                $imageFile->delete();
+            }
+        }
 
         return response()->json(['message' => 'Image deleted']);
     }
