@@ -4,12 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UploadImageRequest;
 use App\Http\Resources\UserImageResource;
-use App\Jobs\ProcessImageJob;
-use App\Models\UserImage;
+use App\Services\ImageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -18,6 +16,10 @@ use Tymon\JWTAuth\Facades\JWTAuth;
  */
 class ImageController extends Controller
 {
+    public function __construct(
+        private readonly ImageService $imageService
+    ) {}
+
     /**
      * Загрузить изображение.
      *
@@ -34,18 +36,7 @@ class ImageController extends Controller
             return response()->json(['error' => 'No file uploaded'], 400);
         }
 
-        $tempPath = 'temp/' . Str::uuid() . '.' . $file->getClientOriginalExtension();
-
-        Storage::disk('s3')->put($tempPath, $file->getContent());
-
-        $userImage = UserImage::create([
-            'user_id' => $user->id,
-            'original_name' => $file->getClientOriginalName(),
-            'status' => 'pending',
-            'temp_path' => $tempPath,
-        ]);
-
-        ProcessImageJob::dispatch($userImage->id);
+        $userImage = $this->imageService->store($user, $file);
 
         return (new UserImageResource($userImage))
             ->response()
@@ -60,10 +51,7 @@ class ImageController extends Controller
         /** @var \App\Models\User $user */
         $user = JWTAuth::user();
 
-        $images = $user->images()
-            ->with('imageFile')
-            ->orderByDesc('created_at')
-            ->paginate(20);
+        $images = $this->imageService->index($user);
 
         return UserImageResource::collection($images);
     }
@@ -75,9 +63,9 @@ class ImageController extends Controller
      */
     public function show(int $id): StreamedResponse|JsonResponse
     {
-        $userImage = UserImage::with('imageFile')->find($id);
+        $userImage = $this->imageService->findReadyImage($id);
 
-        if (! $userImage || ! $userImage->isReady() || ! $userImage->imageFile) {
+        if (! $userImage) {
             return response()->json(['error' => 'Image not found'], 404);
         }
 
@@ -94,9 +82,9 @@ class ImageController extends Controller
      */
     public function thumbnail(int $id): StreamedResponse|JsonResponse
     {
-        $userImage = UserImage::with('imageFile')->find($id);
+        $userImage = $this->imageService->findReadyImageWithThumbnail($id);
 
-        if (! $userImage || ! $userImage->isReady() || ! $userImage->imageFile?->thumbnail_path) {
+        if (! $userImage) {
             return response()->json(['error' => 'Thumbnail not found'], 404);
         }
 
@@ -116,34 +104,10 @@ class ImageController extends Controller
         /** @var \App\Models\User $user */
         $user = JWTAuth::user();
 
-        $userImage = UserImage::with('imageFile')->where('id', $id)
-            ->where('user_id', $user->id)
-            ->first();
+        $deleted = $this->imageService->destroy($user, $id);
 
-        if (! $userImage) {
+        if (! $deleted) {
             return response()->json(['error' => 'Image not found'], 404);
-        }
-
-        if ($userImage->temp_path) {
-            Storage::disk('s3')->delete($userImage->temp_path);
-        }
-
-        $imageFile = $userImage->imageFile;
-
-        $userImage->delete();
-
-        if ($imageFile) {
-            $otherReferences = UserImage::where('image_file_id', $imageFile->id)->exists();
-
-            if (! $otherReferences) {
-                Storage::disk('s3')->delete($imageFile->storage_path);
-
-                if ($imageFile->thumbnail_path) {
-                    Storage::disk('s3')->delete($imageFile->thumbnail_path);
-                }
-
-                $imageFile->delete();
-            }
         }
 
         return response()->json(['message' => 'Image deleted']);
