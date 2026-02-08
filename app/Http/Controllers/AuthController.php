@@ -2,21 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\DTO\LoginDTO;
+use App\DTO\RegisterUserDTO;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\AuthTokenResource;
 use App\Http\Resources\TokenResource;
 use App\Http\Resources\UserResource;
-use App\Models\User;
+use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Hash;
-use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Http\Request;
 
 /**
  * @tags Auth
  */
 class AuthController extends Controller
 {
+    public function __construct(
+        private readonly AuthService $authService
+    ) {}
+
     /**
      * Регистрация нового пользователя.
      *
@@ -29,16 +34,16 @@ class AuthController extends Controller
         /** @var array{name: string, email: string, password: string} $validated */
         $validated = $request->validated();
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-        ]);
+        $data = new RegisterUserDTO(
+            name: $validated['name'],
+            email: $validated['email'],
+            password: $validated['password'],
+        );
 
-        /** @var string $token */
-        $token = JWTAuth::fromUser($user);
+        $user = $this->authService->register($data);
+        $tokenData = $this->authService->tokenFromUser($user);
 
-        return (new AuthTokenResource($user, $token))
+        return (new AuthTokenResource($user, $tokenData))
             ->response()
             ->setStatusCode(201);
     }
@@ -50,29 +55,30 @@ class AuthController extends Controller
      */
     public function login(LoginRequest $request): TokenResource|JsonResponse
     {
-        $credentials = $request->validated();
+        /** @var array{email: string, password: string} $validated */
+        $validated = $request->validated();
 
-        /** @var string|false $token */
-        $token = JWTAuth::attempt($credentials);
+        $data = new LoginDTO(
+            email: $validated['email'],
+            password: $validated['password'],
+        );
 
-        if (! $token) {
+        $tokenData = $this->authService->login($data);
+
+        if (! $tokenData) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        return new TokenResource([
-            'token' => $token,
-            'token_type' => 'bearer',
-            'expires_in' => (int) config('jwt.ttl') * 60,
-        ]);
+        return new TokenResource($tokenData);
     }
 
     /**
      * Получить текущего пользователя.
      */
-    public function me(): UserResource
+    public function me(Request $request): UserResource
     {
-        /** @var User $user */
-        $user = JWTAuth::user();
+        /** @var \App\Models\User $user */
+        $user = $request->user();
 
         return new UserResource($user);
     }

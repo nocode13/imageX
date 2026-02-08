@@ -2,20 +2,20 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\ImageStatus;
+use App\Models\UserImage;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Storage;
 
 /**
- * @property int $id
- * @property string $original_name
- * @property string $status
- * @property \Carbon\Carbon $created_at
- * @property-read \App\Models\ImageFile|null $imageFile
+ * @property UserImage $resource
+ *
+ * @mixin UserImage
  */
 class UserImageResource extends JsonResource
 {
-    private const URL_EXPIRATION_MINUTES = 60;
+    private const URL_EXPIRATION_MINUTES = 30;
 
     /**
      * @return array<string, mixed>
@@ -32,18 +32,19 @@ class UserImageResource extends JsonResource
             'width' => $imageFile?->width,
             'height' => $imageFile?->height,
             'created_at' => $this->created_at,
-            'urls' => $this->when($this->status === 'ready' && $imageFile !== null, fn () => [
-                'image' => URL::temporarySignedRoute(
-                    'images.show',
-                    now()->addMinutes(self::URL_EXPIRATION_MINUTES),
-                    ['id' => $this->id]
-                ),
-                'thumbnail' => URL::temporarySignedRoute(
-                    'images.thumbnail',
-                    now()->addMinutes(self::URL_EXPIRATION_MINUTES),
-                    ['id' => $this->id]
-                ),
-            ]),
+            'urls' => $this->when($this->status === ImageStatus::Ready && $imageFile !== null, function () use ($imageFile) {
+                /** @var \App\Models\ImageFile $imageFile */
+                /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+                $disk = Storage::disk('s3-public');
+                $expiration = now()->addMinutes(self::URL_EXPIRATION_MINUTES);
+
+                return [
+                    'image' => $disk->temporaryUrl($imageFile->storage_path, $expiration),
+                    'thumbnail' => $imageFile->thumbnail_path
+                        ? $disk->temporaryUrl($imageFile->thumbnail_path, $expiration)
+                        : null,
+                ];
+            }),
         ];
     }
 }

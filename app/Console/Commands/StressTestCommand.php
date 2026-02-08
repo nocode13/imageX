@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\ImageStatus;
 use App\Models\UserImage;
 use GdImage;
 use Illuminate\Console\Command;
@@ -24,8 +25,7 @@ class StressTestCommand extends Command
 
     public function handle(): int
     {
-        /** @phpstan-ignore larastan.noEnvCallsOutsideOfConfig */
-        $this->baseUrl = 'http://localhost:' . env('APP_PORT', 8000);
+        $this->baseUrl = rtrim((string) config('app.url'), '/');
 
         $count = (int) $this->option('count');
         $rps = (int) $this->option('rps');
@@ -42,7 +42,7 @@ class StressTestCommand extends Command
             ['Simulates daily load', number_format($rps * 86400) . ' images/day'],
         ]);
 
-        // Auth
+        // Аутентификация
         $token = $this->authenticate($email, $password);
         if ($token === null) {
             $this->error('Authentication failed');
@@ -53,18 +53,18 @@ class StressTestCommand extends Command
         $this->info("Authenticated as {$email}");
         $this->newLine();
 
-        // Initial queue state
-        $initialPending = UserImage::where('status', 'pending')->count();
+        // Начальное состояние очереди
+        $initialPending = UserImage::where('status', ImageStatus::Pending)->count();
         $this->info("Queue before test: {$initialPending} pending");
         $this->newLine();
 
-        // Run test
+        // Запуск теста
         $results = $this->runTest($count, $rps);
 
-        // Results
+        // Результаты
         $this->showResults($results, $count);
 
-        // Monitor queue until empty
+        // Мониторинг очереди до завершения
         $this->monitorQueue();
 
         return 0;
@@ -293,9 +293,9 @@ class StressTestCommand extends Command
         $startTime = time();
 
         while (true) {
-            $pending = UserImage::where('status', 'pending')->count();
-            $ready = UserImage::where('status', 'ready')->count();
-            $failed = UserImage::where('status', 'failed')->count();
+            $pending = UserImage::where('status', ImageStatus::Pending)->count();
+            $ready = UserImage::where('status', ImageStatus::Ready)->count();
+            $failed = UserImage::where('status', ImageStatus::Failed)->count();
 
             $elapsed = time() - $startTime;
             $throughput = $elapsed > 0 ? round($ready / $elapsed, 1) : 0;

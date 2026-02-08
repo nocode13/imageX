@@ -5,14 +5,17 @@ namespace App\Providers;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\Generator\OpenApi;
 use Dedoc\Scramble\Support\Generator\SecurityScheme;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 
 class AppServiceProvider extends ServiceProvider
 {
     /**
-     * Register any application services.
+     * Регистрация сервисов приложения.
      */
     public function register(): void
     {
@@ -20,12 +23,14 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Bootstrap any application services.
+     * Инициализация сервисов приложения.
      */
     public function boot(): void
     {
+        $this->configureRateLimiting();
+
         Scramble::routes(function (Route $route) {
-            // Exclude signed routes from docs (they can't be tested in Swagger)
+            // Исключить подписанные маршруты из документации (их нельзя протестировать в Swagger)
             if (in_array('signed', $route->middleware())) {
                 return false;
             }
@@ -39,5 +44,12 @@ class AppServiceProvider extends ServiceProvider
                 $scheme = SecurityScheme::http('bearer', 'JWT');
                 $openApi->secure($scheme);
             });
+    }
+
+    private function configureRateLimiting(): void
+    {
+        RateLimiter::for('auth', function (Request $request) {
+            return Limit::perMinute(5)->by($request->ip() ?? 'unknown');
+        });
     }
 }

@@ -2,22 +2,20 @@
 
 namespace App\Http\Resources;
 
+use App\DTO\TokenDTO;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @property string $token
- * @property string $token_type
- * @property int $expires_in
+ * @property TokenDTO $resource
+ *
+ * @mixin TokenDTO
  */
 class TokenResource extends JsonResource
 {
-    /**
-     * @param  array{token: string, token_type: string, expires_in: int}  $resource
-     */
-    public function __construct(array $resource)
+    public function __construct(TokenDTO $resource)
     {
-        parent::__construct((object) $resource);
+        parent::__construct($resource);
     }
 
     /**
@@ -26,9 +24,9 @@ class TokenResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'token' => $this->token,
-            'token_type' => $this->token_type,
-            'expires_in' => $this->expires_in,
+            'token' => $this->resource->token,
+            'token_type' => $this->resource->tokenType,
+            'expires_in' => $this->resource->expiresIn,
         ];
     }
 }

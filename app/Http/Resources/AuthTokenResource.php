@@ -2,18 +2,24 @@
 
 namespace App\Http\Resources;
 
+use App\DTO\TokenDTO;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @property User $resource
+ *
+ * @mixin User
+ */
 class AuthTokenResource extends JsonResource
 {
-    private string $token;
+    private TokenDTO $tokenData;
 
-    public function __construct(User $user, string $token)
+    public function __construct(User $user, TokenDTO $tokenData)
     {
         parent::__construct($user);
-        $this->token = $token;
+        $this->tokenData = $tokenData;
     }
 
     /**
@@ -23,9 +29,9 @@ class AuthTokenResource extends JsonResource
     {
         return [
             'user' => new UserResource($this->resource),
-            'token' => $this->token,
-            'token_type' => 'bearer',
-            'expires_in' => (int) config('jwt.ttl') * 60,
+            'token' => $this->tokenData->token,
+            'token_type' => $this->tokenData->tokenType,
+            'expires_in' => $this->tokenData->expiresIn,
         ];
     }
 }
