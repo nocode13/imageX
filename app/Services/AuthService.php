@@ -4,8 +4,8 @@ namespace App\Services;
 
 use App\DTO\LoginDTO;
 use App\DTO\RegisterUserDTO;
-use App\DTO\TokenDTO;
 use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthService
@@ -19,34 +19,22 @@ class AuthService
         ]);
     }
 
-    public function login(LoginDTO $data): ?TokenDTO
+    public function login(LoginDTO $data): ?User
     {
-        /** @var string|false $token */
-        $token = JWTAuth::attempt([
-            'email' => $data->email,
-            'password' => $data->password,
-        ]);
+        $user = User::where('email', $data->email)->first();
 
-        if (! $token) {
+        if (! $user || ! Hash::check($data->password, $user->password)) {
             return null;
         }
 
-        return new TokenDTO(
-            token: $token,
-            tokenType: 'bearer',
-            expiresIn: (int) config('jwt.ttl') * 60,
-        );
+        return $user;
     }
 
-    public function tokenFromUser(User $user): TokenDTO
+    public function createToken(User $user): string
     {
         /** @var string $token */
         $token = JWTAuth::fromUser($user);
 
-        return new TokenDTO(
-            token: $token,
-            tokenType: 'bearer',
-            expiresIn: (int) config('jwt.ttl') * 60,
-        );
+        return $token;
     }
 }

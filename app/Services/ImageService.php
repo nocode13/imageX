@@ -51,19 +51,22 @@ class ImageService
 
             $userImage->delete();
 
-            if ($imageFile) {
-                $hasOtherReferences = UserImage::where('image_file_id', $imageFile->id)->exists();
-
-                if (! $hasOtherReferences) {
-                    Storage::disk('s3')->delete($imageFile->storage_path);
-
-                    if ($imageFile->thumbnail_path) {
-                        Storage::disk('s3')->delete($imageFile->thumbnail_path);
-                    }
-
-                    $imageFile->delete();
-                }
+            if (! $imageFile) {
+                return;
             }
+
+            $hasOtherReferences = UserImage::where('image_file_id', $imageFile->id)->exists();
+
+            if ($hasOtherReferences) {
+                return;
+            }
+
+            Storage::disk('s3')->delete(array_filter([
+                $imageFile->storage_path,
+                $imageFile->thumbnail_path,
+            ]));
+
+            $imageFile->delete();
         });
 
         return $userImage;
