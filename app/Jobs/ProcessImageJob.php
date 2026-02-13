@@ -90,7 +90,7 @@ class ProcessImageJob implements ShouldQueue
         $userImage = UserImage::find($this->userImageId);
 
         if ($userImage) {
-            $userImage->update(['status' => ImageStatus::Failed]);
+            $userImage->update(['status' => ImageStatus::FAILED]);
 
             if ($userImage->temp_path) {
                 Storage::disk('s3')->delete($userImage->temp_path);
@@ -137,8 +137,8 @@ class ProcessImageJob implements ShouldQueue
 
         $data = CreateImageFileDTO::fromArray([
             'contentHash' => $contentHash,
-            'storagePath' => 'images/'.substr($contentHash, 0, 2).'/'.$contentHash.'.webp',
-            'thumbnailPath' => 'thumbnails/'.substr($contentHash, 0, 2).'/'.$contentHash.'.webp',
+            'storagePath' => 'images/' . substr($contentHash, 0, 2) . '/' . $contentHash . '.webp',
+            'thumbnailPath' => 'thumbnails/' . substr($contentHash, 0, 2) . '/' . $contentHash . '.webp',
             'mimeType' => 'image/webp',
             'size' => strlen($webpContent),
             'width' => $image->width(),
@@ -185,7 +185,7 @@ class ProcessImageJob implements ShouldQueue
     {
         $userImage->update([
             'image_file_id' => $imageFile->id,
-            'status' => ImageStatus::Ready,
+            'status' => ImageStatus::READY,
             'temp_path' => null,
         ]);
     }

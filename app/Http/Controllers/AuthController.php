@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\DTO\LoginDTO;
+use App\DTO\RegisterUserDTO;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Http\Resources\AuthTokenResource;
@@ -18,20 +20,24 @@ class AuthController extends Controller
 
     public function register(RegisterRequest $request): JsonResponse
     {
-        $user = $this->authService->register($request->toDTO());
+
+        $dto = RegisterUserDTO::fromArray($request->validated());
+        $user = $this->authService->register($dto);
         $token = $this->authService->createToken($user);
 
-        return AuthTokenResource::make(['user' => $user, 'token' => $token])
+        return UserResource::make($user)
+            ->additional(['token' => $token])
             ->response()
             ->setStatusCode(201);
     }
 
-    public function login(LoginRequest $request): AuthTokenResource
+    public function login(LoginRequest $request): UserResource
     {
-        $user = $this->authService->login($request->toDTO());
+        $dto = LoginDTO::fromArray($request->validated());
+        $user = $this->authService->login($dto);
         $token = $this->authService->createToken($user);
 
-        return AuthTokenResource::make(['user' => $user, 'token' => $token]);
+        return UserResource::make($user)->additional(['token' => $token]);
     }
 
     public function me(Request $request): UserResource

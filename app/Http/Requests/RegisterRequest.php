@@ -2,10 +2,12 @@
 
 namespace App\Http\Requests;
 
-use App\DTO\RegisterUserDTO;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
 
+/**
+ * @method array{name: string, email: string, password: string} validated($key = null, $default = null)
+ */
 class RegisterRequest extends FormRequest
 {
     public function authorize(): bool
@@ -23,13 +25,5 @@ class RegisterRequest extends FormRequest
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'confirmed', Password::defaults()],
         ];
-    }
-
-    public function toDTO(): RegisterUserDTO
-    {
-        /** @var array{name: string, email: string, password: string} $validated */
-        $validated = $this->validated();
-
-        return RegisterUserDTO::fromArray($validated);
     }
 }

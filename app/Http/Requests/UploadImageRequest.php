@@ -2,10 +2,12 @@
 
 namespace App\Http\Requests;
 
-use App\DTO\UploadImageDTO;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\UploadedFile;
 
+/**
+ * @method array{image: UploadedFile} validated($key = null, $default = null)
+ */
 class UploadImageRequest extends FormRequest
 {
     public function authorize(): bool
@@ -21,13 +23,5 @@ class UploadImageRequest extends FormRequest
         return [
             'image' => ['required', 'image', 'mimes:png,jpeg,jpg', 'max:5120'],
         ];
-    }
-
-    public function toDTO(): UploadImageDTO
-    {
-        /** @var array{image: UploadedFile} $validated */
-        $validated = $this->validated();
-
-        return UploadImageDTO::fromArray($validated);
     }
 }

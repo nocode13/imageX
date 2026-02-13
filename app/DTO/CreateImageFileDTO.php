@@ -2,7 +2,7 @@
 
 namespace App\DTO;
 
-readonly class CreateImageFileDTO
+final readonly class CreateImageFileDTO
 {
     public function __construct(
         public string $contentHash,

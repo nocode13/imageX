@@ -4,7 +4,7 @@ namespace App\Enums;
 
 enum ImageStatus: string
 {
-    case Pending = 'pending';
-    case Ready = 'ready';
-    case Failed = 'failed';
+    case PENDING = 'PENDING';
+    case READY = 'READY';
+    case FAILED = 'FAILED';
 }

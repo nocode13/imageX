@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\DTO\UploadImageDTO;
 use App\Http\Requests\UploadImageRequest;
-use App\Http\Resources\UserImageResource;
+use App\Http\Resources\ImageResource;
 use App\Services\ImageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,12 +18,13 @@ class ImageController extends Controller
 
     public function store(UploadImageRequest $request): JsonResponse
     {
+        $dto = UploadImageDTO::fromArray($request->validated());
         /** @var \App\Models\User $user */
         $user = $request->user();
 
-        $userImage = $this->imageService->upload($user, $request->toDTO());
+        $userImage = $this->imageService->upload($user, $dto);
 
-        return UserImageResource::make($userImage)
+        return ImageResource::make($userImage)
             ->response()
             ->setStatusCode(201);
     }
@@ -37,7 +39,7 @@ class ImageController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20);
 
-        return UserImageResource::collection($images);
+        return ImageResource::collection($images);
     }
 
     public function destroy(int $id, Request $request): JsonResponse

@@ -24,7 +24,7 @@ class ImageService
         $userImage = UserImage::create([
             'user_id' => $user->id,
             'original_name' => $this->sanitizeFilename($file->getClientOriginalName()),
-            'status' => ImageStatus::Pending,
+            'status' => ImageStatus::PENDING,
             'temp_path' => $tempPath,
         ]);
 
