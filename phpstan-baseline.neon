@@ -5,8 +5,3 @@ parameters:
 			identifier: method.childReturnType
 			count: 1
 			path: database/factories/UserFactory.php
-		-
-			message: '#^Offset int might not exist on non-empty-list<float>\.$#'
-			identifier: offsetAccess.notFound
-			count: 2
-			path: app/Console/Commands/StressTestCommand.php

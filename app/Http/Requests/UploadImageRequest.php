@@ -3,7 +3,11 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\UploadedFile;
 
+/**
+ * @method array{image: UploadedFile} validated($key = null, $default = null)
+ */
 class UploadImageRequest extends FormRequest
 {
     public function authorize(): bool

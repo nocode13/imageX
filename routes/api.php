@@ -2,25 +2,25 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ImageController;
+use App\Http\Controllers\MeController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('auth')->group(function () {
-    Route::post('register', [AuthController::class, 'register']);
-    Route::post('login', [AuthController::class, 'login']);
-
-    Route::middleware('auth:api')->group(function () {
-        Route::get('me', [AuthController::class, 'me']);
+Route::middleware(['throttle:auth', 'guest:api'])
+    ->prefix('auth')
+    ->controller(AuthController::class)
+    ->group(function () {
+        Route::post('/register', 'register');
+        Route::post('/login', 'login');
     });
-});
 
-Route::middleware('auth:api')->group(function () {
-    Route::post('images', [ImageController::class, 'store']);
-    Route::get('images', [ImageController::class, 'index']);
-    Route::delete('images/{id}', [ImageController::class, 'destroy']);
-});
+Route::middleware(['auth:api'])->group(function () {
+    Route::get('/me', MeController::class);
 
-// Public routes with signed URL validation (for <img> tags)
-Route::middleware('signed')->group(function () {
-    Route::get('images/{id}/file', [ImageController::class, 'show'])->name('images.show');
-    Route::get('images/{id}/thumbnail', [ImageController::class, 'thumbnail'])->name('images.thumbnail');
+    Route::prefix('images')
+        ->controller(ImageController::class)
+        ->group(function () {
+            Route::post('/', 'store');
+            Route::get('/', 'index');
+            Route::delete('/{id}', 'destroy');
+        });
 });
