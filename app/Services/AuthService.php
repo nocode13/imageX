@@ -5,6 +5,7 @@ namespace App\Services;
 use App\DTO\LoginDTO;
 use App\DTO\RegisterUserDTO;
 use App\Models\User;
+use App\Exceptions\InvalidCredentialsException;
 use Illuminate\Support\Facades\Hash;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -19,12 +20,12 @@ class AuthService
         ]);
     }
 
-    public function login(LoginDTO $data): ?User
+    public function login(LoginDTO $data): User
     {
         $user = User::where('email', $data->email)->first();
 
         if (! $user || ! Hash::check($data->password, $user->password)) {
-            return null;
+            throw new InvalidCredentialsException();
         }
 
         return $user;

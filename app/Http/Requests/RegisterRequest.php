@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\Auth;
+namespace App\Http\Requests;
 
 use App\DTO\RegisterUserDTO;
 use Illuminate\Foundation\Http\FormRequest;

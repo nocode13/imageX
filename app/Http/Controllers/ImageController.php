@@ -9,41 +9,24 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
-/**
- * @tags Images
- */
 class ImageController extends Controller
 {
     public function __construct(
         private readonly ImageService $imageService
     ) {}
 
-    /**
-     * Загрузить изображение.
-     *
-     * @response 201 UserImageResource
-     */
     public function store(UploadImageRequest $request): JsonResponse
     {
         /** @var \App\Models\User $user */
         $user = $request->user();
 
-        $file = $request->file('image');
+        $userImage = $this->imageService->upload($user, $request->toDTO());
 
-        if (! $file instanceof \Illuminate\Http\UploadedFile) {
-            return response()->json(['error' => 'No file uploaded'], 400);
-        }
-
-        $userImage = $this->imageService->upload($user, $file);
-
-        return (new UserImageResource($userImage))
+        return UserImageResource::make($userImage)
             ->response()
             ->setStatusCode(201);
     }
 
-    /**
-     * Получить список своих изображений.
-     */
     public function index(Request $request): AnonymousResourceCollection
     {
         /** @var \App\Models\User $user */
@@ -57,21 +40,12 @@ class ImageController extends Controller
         return UserImageResource::collection($images);
     }
 
-    /**
-     * Удалить изображение.
-     *
-     * @response array{message: string}
-     */
     public function destroy(int $id, Request $request): JsonResponse
     {
         /** @var \App\Models\User $user */
         $user = $request->user();
 
-        $userImage = $this->imageService->delete($user, $id);
-
-        if (! $userImage) {
-            return response()->json(['error' => 'Image not found'], 404);
-        }
+        $this->imageService->delete($user, $id);
 
         return response()->json(['message' => 'Image deleted']);
     }

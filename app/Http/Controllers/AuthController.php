@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\Auth\LoginRequest;
-use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Requests\LoginRequest;
+use App\Http\Requests\RegisterRequest;
 use App\Http\Resources\AuthTokenResource;
 use App\Http\Resources\UserResource;
 use App\Services\AuthService;
@@ -26,14 +26,9 @@ class AuthController extends Controller
             ->setStatusCode(201);
     }
 
-    public function login(LoginRequest $request): AuthTokenResource|JsonResponse
+    public function login(LoginRequest $request): AuthTokenResource
     {
         $user = $this->authService->login($request->toDTO());
-
-        if (! $user) {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
-
         $token = $this->authService->createToken($user);
 
         return AuthTokenResource::make(['user' => $user, 'token' => $token]);

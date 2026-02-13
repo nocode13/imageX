@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\DTO\CreateImageFileDTO;
 use App\Enums\ImageStatus;
+use App\Exceptions\ImageDownloadException;
 use App\Models\ImageFile;
 use App\Models\UserImage;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -110,7 +111,7 @@ class ProcessImageJob implements ShouldQueue
         $content = Storage::disk('s3')->get($tempPath);
 
         if (! $content) {
-            throw new \RuntimeException("Failed to download temp file: {$tempPath}");
+            throw new ImageDownloadException($tempPath);
         }
 
         return $content;
@@ -134,15 +135,15 @@ class ProcessImageJob implements ShouldQueue
         $webpContent = $image->toWebp(85)->toString();
         $thumbnailContent = $image->coverDown(200, 200)->toWebp(85)->toString();
 
-        $data = new CreateImageFileDTO(
-            contentHash: $contentHash,
-            storagePath: 'images/'.substr($contentHash, 0, 2).'/'.$contentHash.'.webp',
-            thumbnailPath: 'thumbnails/'.substr($contentHash, 0, 2).'/'.$contentHash.'.webp',
-            mimeType: 'image/webp',
-            size: strlen($webpContent),
-            width: $image->width(),
-            height: $image->height(),
-        );
+        $data = CreateImageFileDTO::fromArray([
+            'contentHash' => $contentHash,
+            'storagePath' => 'images/'.substr($contentHash, 0, 2).'/'.$contentHash.'.webp',
+            'thumbnailPath' => 'thumbnails/'.substr($contentHash, 0, 2).'/'.$contentHash.'.webp',
+            'mimeType' => 'image/webp',
+            'size' => strlen($webpContent),
+            'width' => $image->width(),
+            'height' => $image->height(),
+        ]);
 
         Storage::disk('s3')->put($data->storagePath, $webpContent);
         Storage::disk('s3')->put($data->thumbnailPath, $thumbnailContent);

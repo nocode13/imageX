@@ -2,20 +2,22 @@
 
 namespace App\Services;
 
+use App\DTO\UploadImageDTO;
 use App\Enums\ImageStatus;
+use App\Exceptions\ImageNotFoundException;
 use App\Jobs\ProcessImageJob;
 use App\Models\User;
 use App\Models\UserImage;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ImageService
 {
-    public function upload(User $user, UploadedFile $file): UserImage
+    public function upload(User $user, UploadImageDTO $dto): UserImage
     {
-        $tempPath = 'temp/'.Str::uuid().'.'.$file->guessExtension();
+        $file = $dto->image;
+        $tempPath = 'temp/' . Str::uuid() . '.' . $file->guessExtension();
 
         Storage::disk('s3')->put($tempPath, $file->getContent());
 
@@ -31,7 +33,7 @@ class ImageService
         return $userImage;
     }
 
-    public function delete(User $user, int $id): ?UserImage
+    public function delete(User $user, int $id): UserImage
     {
         $userImage = UserImage::with('imageFile')
             ->where('id', $id)
@@ -39,7 +41,7 @@ class ImageService
             ->first();
 
         if (! $userImage) {
-            return null;
+            throw new ImageNotFoundException();
         }
 
         DB::transaction(function () use ($userImage): void {
